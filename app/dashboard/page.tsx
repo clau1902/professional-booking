@@ -2,8 +2,8 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { db } from "@/db";
-import { bookings, professionals, services, users, availability } from "@/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { bookings, professionals, services, users, availability, reviews } from "@/db/schema";
+import { eq, desc, inArray } from "drizzle-orm";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -16,6 +16,7 @@ import { BookingStatusButtons } from "@/components/BookingStatusButtons";
 import { AddServiceForm } from "@/components/AddServiceForm";
 import { DeleteServiceButton } from "@/components/DeleteServiceButton";
 import { EditProfileSection } from "@/components/EditProfileSection";
+import { ReviewButton } from "@/components/ReviewButton";
 
 const STATUS_STYLES: Record<string, string> = {
   PENDING:   "bg-amber-50 text-amber-700 border-amber-200",
@@ -112,6 +113,17 @@ export default async function DashboardPage() {
     (b) => b.status === "COMPLETED" || b.status === "CANCELLED"
   );
 
+  // Find which completed bookings already have a review
+  const completedIds = past.filter((b) => b.status === "COMPLETED").map((b) => b.id);
+  const reviewedBookingIds = new Set<string>();
+  if (completedIds.length > 0) {
+    const existingReviews = await db
+      .select({ bookingId: reviews.bookingId })
+      .from(reviews)
+      .where(inArray(reviews.bookingId, completedIds));
+    existingReviews.forEach((r) => reviewedBookingIds.add(r.bookingId));
+  }
+
   return (
     <div className="pt-20 min-h-screen bg-[var(--cream)]">
       <div className="max-w-5xl mx-auto px-6 py-12">
@@ -187,7 +199,14 @@ export default async function DashboardPage() {
               </div>
             ) : (
               <div className="space-y-4">
-                {past.map((b) => <CustomerBookingCard key={b.id} booking={b} showReview />)}
+                {past.map((b) => (
+                  <CustomerBookingCard
+                    key={b.id}
+                    booking={b}
+                    showReview
+                    hasReview={reviewedBookingIds.has(b.id)}
+                  />
+                ))}
               </div>
             )}
           </TabsContent>
@@ -393,6 +412,7 @@ async function ProfessionalDashboardView({
 function CustomerBookingCard({
   booking,
   showReview = false,
+  hasReview = false,
 }: {
   booking: {
     id: string;
@@ -408,6 +428,7 @@ function CustomerBookingCard({
     professionalId: string;
   };
   showReview?: boolean;
+  hasReview?: boolean;
 }) {
   return (
     <div className="bg-white rounded-2xl p-6 border border-[var(--border)] flex flex-col sm:flex-row items-start justify-between gap-4">
@@ -444,10 +465,14 @@ function CustomerBookingCard({
           <Link href={`/professionals/${booking.professionalId}`}>
             <Button variant="outline" size="sm" className="rounded-xl text-xs">View pro</Button>
           </Link>
-          {showReview && booking.status === "COMPLETED" && (
-            <Button size="sm" className="bg-[var(--terra)] text-white rounded-xl text-xs gap-1">
-              <Star size={11} />Review
-            </Button>
+          {showReview && booking.status === "COMPLETED" && !hasReview && (
+            <ReviewButton bookingId={booking.id} professionalName={booking.professionalName} />
+          )}
+          {showReview && booking.status === "COMPLETED" && hasReview && (
+            <span className="text-xs text-emerald-600 font-medium flex items-center gap-1">
+              <Star size={11} className="fill-emerald-500 text-emerald-500" />
+              Reviewed
+            </span>
           )}
         </div>
       </div>
