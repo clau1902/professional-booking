@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { db } from "@/db";
 import { professionals, users, services, reviews, bookings, availability } from "@/db/schema";
 import { eq } from "drizzle-orm";

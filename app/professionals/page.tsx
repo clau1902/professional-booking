@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { db } from "@/db";
 import { professionals, users } from "@/db/schema";
 import { eq, like, and, gte, lte, or, ilike } from "drizzle-orm";
