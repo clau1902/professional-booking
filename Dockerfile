@@ -27,6 +27,7 @@ ENV NEXT_PUBLIC_APP_URL=http://localhost:3000
 ENV STRIPE_SECRET_KEY=sk_test_placeholder
 ENV STRIPE_WEBHOOK_SECRET=whsec_placeholder
 ENV NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_placeholder
+ENV RESEND_API_KEY=re_placeholder
 
 RUN npm run build
 

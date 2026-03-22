@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
 import { db } from "@/db";
-import { bookings } from "@/db/schema";
+import { bookings, professionals, services, users } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import Stripe from "stripe";
+import {
+  sendBookingRequestedToCustomer,
+  sendBookingRequestedToProfessional,
+} from "@/lib/email";
 
 export async function POST(req: NextRequest) {
   const body = await req.text();
@@ -53,4 +57,41 @@ export async function createBookingFromSession(session: Stripe.Checkout.Session)
     status: "PENDING",
     stripeSessionId: session.id,
   });
+
+  // Send emails — fetch needed data
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const [customer, professional, service] = await Promise.all([
+    db.select({ name: users.name, email: users.email }).from(users).where(eq(users.id, customerId)).limit(1),
+    db.select({ name: users.name, email: users.email })
+      .from(professionals)
+      .innerJoin(users, eq(professionals.userId, users.id))
+      .where(eq(professionals.id, professionalId))
+      .limit(1),
+    db.select({ name: services.name }).from(services).where(eq(services.id, serviceId)).limit(1),
+  ]);
+
+  if (!customer[0] || !professional[0] || !service[0]) return;
+
+  const bookingDate = new Date(date);
+
+  await Promise.allSettled([
+    sendBookingRequestedToCustomer({
+      to: customer[0].email,
+      customerName: customer[0].name,
+      professionalName: professional[0].name,
+      serviceName: service[0].name,
+      date: bookingDate,
+      totalPrice: parseFloat(totalPrice),
+      appUrl,
+    }),
+    sendBookingRequestedToProfessional({
+      to: professional[0].email,
+      professionalName: professional[0].name,
+      customerName: customer[0].name,
+      serviceName: service[0].name,
+      date: bookingDate,
+      notes,
+      appUrl,
+    }),
+  ]);
 }

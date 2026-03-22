@@ -2,8 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { db } from "@/db";
-import { professionals, bookings } from "@/db/schema";
+import { professionals, bookings, users, services } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
+import {
+  sendBookingConfirmedToCustomer,
+  sendBookingCompletedToCustomer,
+  sendBookingCancelledToCustomer,
+} from "@/lib/email";
 
 const ALLOWED_TRANSITIONS: Record<string, string[]> = {
   PENDING:   ["CONFIRMED", "CANCELLED"],
@@ -29,7 +34,15 @@ export async function PATCH(
   if (!profile) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const [booking] = await db
-    .select({ id: bookings.id, status: bookings.status })
+    .select({
+      id: bookings.id,
+      status: bookings.status,
+      date: bookings.date,
+      notes: bookings.notes,
+      customerId: bookings.customerId,
+      serviceId: bookings.serviceId,
+      professionalId: bookings.professionalId,
+    })
     .from(bookings)
     .where(and(eq(bookings.id, id), eq(bookings.professionalId, profile.id)))
     .limit(1);
@@ -49,6 +62,33 @@ export async function PATCH(
     .set({ status, updatedAt: new Date() })
     .where(eq(bookings.id, id))
     .returning();
+
+  // Send status-change email to customer
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const [customer, professional, service] = await Promise.all([
+    db.select({ name: users.name, email: users.email }).from(users).where(eq(users.id, booking.customerId)).limit(1),
+    db.select({ name: users.name }).from(professionals).innerJoin(users, eq(professionals.userId, users.id)).where(eq(professionals.id, booking.professionalId)).limit(1),
+    db.select({ name: services.name }).from(services).where(eq(services.id, booking.serviceId)).limit(1),
+  ]);
+
+  if (customer[0] && professional[0] && service[0]) {
+    const emailArgs = {
+      to: customer[0].email,
+      customerName: customer[0].name,
+      professionalName: professional[0].name,
+      serviceName: service[0].name,
+      date: booking.date,
+      appUrl,
+    };
+
+    if (status === "CONFIRMED") {
+      sendBookingConfirmedToCustomer(emailArgs).catch(console.error);
+    } else if (status === "COMPLETED") {
+      sendBookingCompletedToCustomer({ ...emailArgs, professionalId: booking.professionalId }).catch(console.error);
+    } else if (status === "CANCELLED") {
+      sendBookingCancelledToCustomer(emailArgs).catch(console.error);
+    }
+  }
 
   return NextResponse.json(updated);
 }

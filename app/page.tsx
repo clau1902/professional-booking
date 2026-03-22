@@ -119,21 +119,36 @@ const testimonials = [
 ];
 
 export default async function HomePage() {
-  const featuredPros = await db
-    .select({
-      id: professionals.id,
-      name: users.name,
-      category: professionals.category,
-      rating: professionals.rating,
-      reviews: professionals.reviewCount,
-      location: professionals.location,
-      hourlyRate: professionals.hourlyRate,
-      isVerified: professionals.isVerified,
-    })
-    .from(professionals)
-    .innerJoin(users, eq(professionals.userId, users.id))
-    .orderBy(desc(professionals.rating))
-    .limit(3);
+  let featuredPros: {
+    id: string;
+    name: string;
+    category: string;
+    rating: number;
+    reviews: number;
+    location: string;
+    hourlyRate: number;
+    isVerified: boolean;
+  }[] = [];
+
+  try {
+    featuredPros = await db
+      .select({
+        id: professionals.id,
+        name: users.name,
+        category: professionals.category,
+        rating: professionals.rating,
+        reviews: professionals.reviewCount,
+        location: professionals.location,
+        hourlyRate: professionals.hourlyRate,
+        isVerified: professionals.isVerified,
+      })
+      .from(professionals)
+      .innerJoin(users, eq(professionals.userId, users.id))
+      .orderBy(desc(professionals.rating))
+      .limit(3);
+  } catch {
+    // DB unavailable — render page without featured pros
+  }
 
   return (
     <div className="overflow-x-hidden">
