@@ -59,7 +59,7 @@ export default async function BookSuccessPage({
           <CheckCircle size={40} className="text-emerald-500" />
         </div>
 
-        <h1 className="font-display text-4xl font-light mb-3">You're booked!</h1>
+        <h1 className="font-display text-4xl font-light mb-3">You&apos;re booked!</h1>
         <p className="text-[var(--muted-foreground)] mb-8">
           Your payment was successful and the booking request has been sent to the professional.
         </p>
@@ -89,7 +89,7 @@ export default async function BookSuccessPage({
         </div>
 
         <p className="text-sm text-[var(--muted-foreground)] mb-6">
-          The professional will confirm within 2 hours. You'll see the update in your dashboard.
+          The professional will confirm within 2 hours. You&apos;ll see the update in your dashboard.
         </p>
 
         <div className="flex flex-col gap-3">

@@ -11,7 +11,7 @@ export default function ForgotPasswordPage() {
         </div>
         <h1 className="font-display text-3xl font-light mb-2">Forgot your password?</h1>
         <p className="text-[var(--muted-foreground)] mb-8">
-          Password reset by email is coming soon. For now, please contact us and we'll help you regain access.
+          Password reset by email is coming soon. For now, please contact us and we&apos;ll help you regain access.
         </p>
         <div className="flex flex-col gap-3">
           <Link href="/contact">

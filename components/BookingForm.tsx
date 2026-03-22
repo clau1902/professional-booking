@@ -5,10 +5,9 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
 import { Calendar } from "@/components/ui/calendar";
 import { CheckCircle, Loader2 } from "lucide-react";
-import { format, addDays, isBefore, startOfDay } from "date-fns";
+import { format, isBefore, startOfDay } from "date-fns";
 
 const TIME_SLOTS = [
   "9:00 AM", "10:00 AM", "11:00 AM", "12:00 PM",
@@ -58,7 +57,8 @@ export function BookingForm({ professional, services, selectedServiceId }: Props
 
     try {
       const [timePart, period] = selectedTime.split(" ");
-      let [hours, minutes] = timePart.split(":").map(Number);
+      let [hours] = timePart.split(":").map(Number);
+      const [, minutes] = timePart.split(":").map(Number);
       if (period === "PM" && hours !== 12) hours += 12;
       if (period === "AM" && hours === 12) hours = 0;
 
@@ -107,7 +107,7 @@ export function BookingForm({ professional, services, selectedServiceId }: Props
           </p>
         )}
         <p className="text-sm text-[var(--muted-foreground)] mb-8">
-          You'll receive a confirmation email once the professional accepts.
+          You&apos;ll receive a confirmation email once the professional accepts.
           Typically within 2 hours.
         </p>
         <div className="flex gap-3 justify-center">
@@ -359,7 +359,7 @@ export function BookingForm({ professional, services, selectedServiceId }: Props
               </Button>
             </div>
             <p className="text-center text-xs text-[var(--muted-foreground)] mt-3">
-              You'll be taken to Stripe's secure checkout to complete payment.
+              You&apos;ll be taken to Stripe&apos;s secure checkout to complete payment.
             </p>
           </div>
         )}

@@ -11,7 +11,7 @@ export default function BookCancelPage() {
         </div>
         <h1 className="font-display text-4xl font-light mb-3">Payment cancelled</h1>
         <p className="text-[var(--muted-foreground)] mb-8">
-          No charge was made. You can go back and try again whenever you're ready.
+          No charge was made. You can go back and try again whenever you&apos;re ready.
         </p>
         <div className="flex flex-col gap-3">
           <Link href="/professionals">

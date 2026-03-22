@@ -36,7 +36,7 @@ export default function ContactPage() {
           </p>
           <h1 className="font-display text-5xl font-light mb-4">Contact us</h1>
           <p className="text-[var(--cream)]/60 text-lg leading-relaxed">
-            Have a question or need help? We'd love to hear from you.
+            Have a question or need help? We&apos;d love to hear from you.
           </p>
         </div>
       </div>
@@ -87,7 +87,7 @@ export default function ContactPage() {
                 </div>
                 <h2 className="font-display text-2xl font-semibold mb-2">Message sent!</h2>
                 <p className="text-[var(--muted-foreground)] mb-6">
-                  Thanks for reaching out. We'll get back to you within 2–4 hours.
+                  Thanks for reaching out. We&apos;ll get back to you within 2–4 hours.
                 </p>
                 <Button
                   variant="outline"

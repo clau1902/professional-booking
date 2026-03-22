@@ -482,7 +482,7 @@ export default async function HomePage() {
             <em className="font-semibold not-italic">professional?</em>
           </h2>
           <p className="text-white/80 mb-10 text-lg">
-            Join 50,000+ customers who've found trusted help through Handpicked.
+            Join 50,000+ customers who&apos;ve found trusted help through Handpicked.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/professionals">

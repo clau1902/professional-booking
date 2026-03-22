@@ -350,7 +350,7 @@ export function ProfessionalOnboarding({ userName: _userName }: { userName: stri
       {step === 3 && (
         <form onSubmit={handleAvailabilitySubmit} className="space-y-6">
           <p className="text-sm text-[var(--muted-foreground)] -mt-2">
-            Select the days you're available and your typical working hours. You can skip this and set it later.
+            Select the days you&apos;re available and your typical working hours. You can skip this and set it later.
           </p>
 
           <div>
