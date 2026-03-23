@@ -20,7 +20,7 @@ services:
     build:
       context: .
       target: deps
-    command: npx drizzle-kit push
+    command: npx drizzle-kit migrate
     environment:
       DATABASE_URL: postgresql://handpicked:handpicked@db:5432/local_services_db
     depends_on:
