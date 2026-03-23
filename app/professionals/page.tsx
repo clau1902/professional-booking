@@ -2,13 +2,15 @@ export const dynamic = "force-dynamic";
 
 import { db } from "@/db";
 import { professionals, users } from "@/db/schema";
-import { eq, like, and, gte, lte, or, ilike } from "drizzle-orm";
+import { eq, and, gte, lte, or, ilike } from "drizzle-orm";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Star, MapPin, Clock, ShieldCheck } from "lucide-react";
 import { ProfessionalFilters } from "@/components/ProfessionalFilters";
+import { ProfessionalsSearch } from "@/components/ProfessionalsSearch";
 import { ProAvatar, ProCover } from "@/components/ProAvatar";
+import { Suspense } from "react";
 
 const CATEGORIES = [
   "All",
@@ -38,17 +40,28 @@ async function getProfessionals(params: SearchParams) {
   if (params.category && params.category !== "All") {
     conditions.push(eq(professionals.category, params.category));
   }
-
   if (params.minRate) {
     conditions.push(gte(professionals.hourlyRate, parseFloat(params.minRate)));
   }
-
   if (params.maxRate) {
     conditions.push(lte(professionals.hourlyRate, parseFloat(params.maxRate)));
   }
-
   if (params.verified === "true") {
     conditions.push(eq(professionals.isVerified, true));
+  }
+  if (params.q) {
+    const pattern = `%${params.q}%`;
+    conditions.push(
+      or(
+        ilike(users.name, pattern),
+        ilike(professionals.bio, pattern),
+        ilike(professionals.category, pattern),
+        ilike(professionals.location, pattern),
+      )!
+    );
+  }
+  if (params.location) {
+    conditions.push(ilike(professionals.location, `%${params.location}%`));
   }
 
   const results = await db
@@ -70,36 +83,18 @@ async function getProfessionals(params: SearchParams) {
     .innerJoin(users, eq(professionals.userId, users.id))
     .where(conditions.length > 0 ? and(...conditions) : undefined);
 
-  // Filter by search query (name or bio)
-  let filtered = results;
-  if (params.q) {
-    const q = params.q.toLowerCase();
-    filtered = results.filter(
-      (p) =>
-        p.userName.toLowerCase().includes(q) ||
-        p.bio.toLowerCase().includes(q) ||
-        p.category.toLowerCase().includes(q) ||
-        p.location.toLowerCase().includes(q)
-    );
-  }
-
-  if (params.location) {
-    const loc = params.location.toLowerCase();
-    filtered = filtered.filter((p) => p.location.toLowerCase().includes(loc));
-  }
-
   // Sort
-  if (params.sort === "rating") {
-    filtered.sort((a, b) => b.rating - a.rating);
-  } else if (params.sort === "price_asc") {
-    filtered.sort((a, b) => a.hourlyRate - b.hourlyRate);
+  if (params.sort === "price_asc") {
+    results.sort((a, b) => a.hourlyRate - b.hourlyRate);
   } else if (params.sort === "price_desc") {
-    filtered.sort((a, b) => b.hourlyRate - a.hourlyRate);
+    results.sort((a, b) => b.hourlyRate - a.hourlyRate);
   } else if (params.sort === "reviews") {
-    filtered.sort((a, b) => b.reviewCount - a.reviewCount);
+    results.sort((a, b) => b.reviewCount - a.reviewCount);
+  } else {
+    results.sort((a, b) => b.rating - a.rating); // default: highest rated
   }
 
-  return filtered;
+  return results;
 }
 
 export default async function ProfessionalsPage({
@@ -111,44 +106,66 @@ export default async function ProfessionalsPage({
   const pros = await getProfessionals(params);
   const activeCategory = params.category || "All";
 
+  const activeFilterCount = [
+    params.q,
+    params.location,
+    params.minRate,
+    params.maxRate,
+    params.verified === "true" ? "verified" : null,
+    params.sort && params.sort !== "rating" ? params.sort : null,
+  ].filter(Boolean).length;
+
   return (
     <div className="pt-20 min-h-screen bg-[var(--cream)]">
       <div className="max-w-7xl mx-auto px-6 py-12">
         {/* Header */}
-        <div className="mb-10">
-          <h1 className="font-display text-4xl lg:text-5xl font-light mb-3">
-            Find a professional
-          </h1>
-          <p className="text-[var(--muted-foreground)]">
-            {pros.length} professional{pros.length !== 1 ? "s" : ""} available
-            {activeCategory !== "All" ? ` in ${activeCategory}` : ""}
-          </p>
+        <div className="mb-8 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+          <div>
+            <h1 className="font-display text-4xl lg:text-5xl font-light mb-3">
+              Find a professional
+            </h1>
+            <p className="text-[var(--muted-foreground)]">
+              {pros.length} professional{pros.length !== 1 ? "s" : ""} available
+              {activeCategory !== "All" ? ` in ${activeCategory}` : ""}
+              {params.q ? ` matching "${params.q}"` : ""}
+            </p>
+          </div>
+          <Suspense>
+            <ProfessionalsSearch defaultValue={params.q} />
+          </Suspense>
         </div>
 
         {/* Category pills */}
         <div className="flex gap-2 flex-wrap mb-8 overflow-x-auto pb-2">
-          {CATEGORIES.map((cat) => (
-            <Link
-              key={cat}
-              href={`/professionals${cat === "All" ? "" : `?category=${cat}`}`}
-            >
-              <button
-                className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap border transition-all ${
-                  activeCategory === cat
-                    ? "bg-[var(--foreground)] text-[var(--cream)] border-[var(--foreground)]"
-                    : "bg-white border-[var(--border)] text-[var(--foreground)] hover:border-[var(--terra)] hover:text-[var(--terra)]"
-                }`}
-              >
-                {cat}
-              </button>
-            </Link>
-          ))}
+          {CATEGORIES.map((cat) => {
+            const href = cat === "All"
+              ? `/professionals${params.q ? `?q=${params.q}` : ""}`
+              : `/professionals?category=${cat}${params.q ? `&q=${params.q}` : ""}`;
+            return (
+              <Link key={cat} href={href}>
+                <button
+                  className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap border transition-all ${
+                    activeCategory === cat
+                      ? "bg-[var(--foreground)] text-[var(--cream)] border-[var(--foreground)]"
+                      : "bg-white border-[var(--border)] text-[var(--foreground)] hover:border-[var(--terra)] hover:text-[var(--terra)]"
+                  }`}
+                >
+                  {cat}
+                </button>
+              </Link>
+            );
+          })}
         </div>
 
         <div className="flex flex-col lg:flex-row gap-8">
           {/* Sidebar filters */}
           <aside className="lg:w-64 shrink-0">
-            <ProfessionalFilters currentParams={params} />
+            <Suspense>
+              <ProfessionalFilters
+                currentParams={params}
+                activeFilterCount={activeFilterCount}
+              />
+            </Suspense>
           </aside>
 
           {/* Results grid */}
@@ -161,9 +178,7 @@ export default async function ProfessionalsPage({
                   Try adjusting your filters or search terms.
                 </p>
                 <Link href="/professionals">
-                  <Button variant="outline" className="rounded-full">
-                    Clear filters
-                  </Button>
+                  <Button variant="outline" className="rounded-full">Clear all filters</Button>
                 </Link>
               </div>
             ) : (
@@ -171,7 +186,6 @@ export default async function ProfessionalsPage({
                 {pros.map((pro) => (
                   <Link key={pro.id} href={`/professionals/${pro.id}`}>
                     <article className="bg-white rounded-2xl overflow-hidden border border-[var(--border)] card-hover h-full flex flex-col">
-                      {/* Cover */}
                       <ProCover category={pro.category} className="h-48">
                         <div className="absolute inset-0 flex items-center justify-center">
                           <ProAvatar name={pro.userName} category={pro.category} size="lg" />

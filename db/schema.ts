@@ -74,6 +74,8 @@ export const bookings = pgTable("bookings", {
   notes: text("notes"),
   totalPrice: real("total_price").notNull(),
   stripeSessionId: text("stripe_session_id").unique(),
+  recurringGroupId: text("recurring_group_id"),
+  recurringPattern: varchar("recurring_pattern", { length: 20 }), // "weekly" | "biweekly" | "monthly"
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
@@ -85,6 +87,25 @@ export const reviews = pgTable("reviews", {
   professionalId: text("professional_id").notNull().references(() => professionals.id),
   rating: integer("rating").notNull(),
   comment: text("comment").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// Conversations
+export const conversations = pgTable("conversations", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  customerId: text("customer_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  professionalId: text("professional_id").notNull().references(() => professionals.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// Messages
+export const messages = pgTable("messages", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  conversationId: text("conversation_id").notNull().references(() => conversations.id, { onDelete: "cascade" }),
+  senderId: text("sender_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  content: text("content").notNull(),
+  isRead: boolean("is_read").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
@@ -132,6 +153,17 @@ export const availabilityRelations = relations(availability, ({ one }) => ({
   professional: one(professionals, { fields: [availability.professionalId], references: [professionals.id] }),
 }));
 
+export const conversationsRelations = relations(conversations, ({ one, many }) => ({
+  customer: one(users, { fields: [conversations.customerId], references: [users.id] }),
+  professional: one(professionals, { fields: [conversations.professionalId], references: [professionals.id] }),
+  messages: many(messages),
+}));
+
+export const messagesRelations = relations(messages, ({ one }) => ({
+  conversation: one(conversations, { fields: [messages.conversationId], references: [conversations.id] }),
+  sender: one(users, { fields: [messages.senderId], references: [users.id] }),
+}));
+
 // Types
 export type User = typeof users.$inferSelect;
 export type Professional = typeof professionals.$inferSelect;
@@ -139,6 +171,8 @@ export type Service = typeof services.$inferSelect;
 export type Booking = typeof bookings.$inferSelect;
 export type Review = typeof reviews.$inferSelect;
 export type Availability = typeof availability.$inferSelect;
+export type Conversation = typeof conversations.$inferSelect;
+export type Message = typeof messages.$inferSelect;
 
 // ─── Better Auth tables ────────────────────────────────────────────────────
 

@@ -4,8 +4,8 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { db } from "@/db";
-import { bookings, professionals, services, users, availability, reviews } from "@/db/schema";
-import { eq, desc, inArray } from "drizzle-orm";
+import { bookings, professionals, services, users, availability, reviews, conversations, messages } from "@/db/schema";
+import { eq, desc, inArray, and, or, sql, count } from "drizzle-orm";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -19,6 +19,8 @@ import { AddServiceForm } from "@/components/AddServiceForm";
 import { DeleteServiceButton } from "@/components/DeleteServiceButton";
 import { EditProfileSection } from "@/components/EditProfileSection";
 import { ReviewButton } from "@/components/ReviewButton";
+import { CancelBookingButton } from "@/components/CancelBookingButton";
+import { InboxTab } from "@/components/InboxTab";
 
 const STATUS_STYLES: Record<string, string> = {
   PENDING:   "bg-amber-50 text-amber-700 border-amber-200",
@@ -78,7 +80,7 @@ export default async function DashboardPage() {
               </div>
             </>
           ) : (
-            <ProfessionalDashboardView profile={profile} userAvatar={dbUser.avatar} />
+            <ProfessionalDashboardView profile={profile} userId={dbUser.id} userAvatar={dbUser.avatar} />
           )}
         </div>
       </div>
@@ -94,6 +96,8 @@ export default async function DashboardPage() {
       totalPrice: bookings.totalPrice,
       notes: bookings.notes,
       createdAt: bookings.createdAt,
+      recurringGroupId: bookings.recurringGroupId,
+      recurringPattern: bookings.recurringPattern,
       serviceName: services.name,
       serviceDuration: services.duration,
       professionalName: users.name,
@@ -114,6 +118,29 @@ export default async function DashboardPage() {
   const past = userBookings.filter(
     (b) => b.status === "COMPLETED" || b.status === "CANCELLED"
   );
+
+  // Fetch conversations with unread counts
+  const userConversations = await db
+    .select({
+      id: conversations.id,
+      professionalId: conversations.professionalId,
+      updatedAt: conversations.updatedAt,
+      otherName: users.name,
+      unreadCount: count(messages.id),
+    })
+    .from(conversations)
+    .innerJoin(professionals, eq(conversations.professionalId, professionals.id))
+    .innerJoin(users, eq(professionals.userId, users.id))
+    .leftJoin(messages, and(
+      eq(messages.conversationId, conversations.id),
+      eq(messages.isRead, false),
+      sql`${messages.senderId} != ${dbUser.id}`
+    ))
+    .where(eq(conversations.customerId, dbUser.id))
+    .groupBy(conversations.id, users.name)
+    .orderBy(desc(conversations.updatedAt));
+
+  const totalUnread = userConversations.reduce((sum, c) => sum + c.unreadCount, 0);
 
   // Find which completed bookings already have a review
   const completedIds = past.filter((b) => b.status === "COMPLETED").map((b) => b.id);
@@ -169,6 +196,14 @@ export default async function DashboardPage() {
               <TabsTrigger value="past" className="rounded-xl">
                 Past ({past.length})
               </TabsTrigger>
+              <TabsTrigger value="messages" className="rounded-xl gap-1.5">
+                Messages
+                {totalUnread > 0 && (
+                  <span className="bg-[var(--terra)] text-white text-xs px-1.5 py-0.5 rounded-full">
+                    {totalUnread}
+                  </span>
+                )}
+              </TabsTrigger>
             </TabsList>
             <Link href="/professionals">
               <Button size="sm" className="bg-[var(--terra)] hover:bg-[var(--terra)]/90 text-white rounded-xl">
@@ -212,6 +247,13 @@ export default async function DashboardPage() {
               </div>
             )}
           </TabsContent>
+
+          <TabsContent value="messages">
+            <InboxTab
+              conversations={userConversations}
+              currentUserId={dbUser.id}
+            />
+          </TabsContent>
         </Tabs>
       </div>
     </div>
@@ -222,12 +264,14 @@ export default async function DashboardPage() {
 
 async function ProfessionalDashboardView({
   profile,
+  userId,
   userAvatar,
 }: {
   profile: typeof professionals.$inferSelect;
+  userId: string;
   userAvatar?: string | null;
 }) {
-  const [proServices, proBookings, proAvailability] = await Promise.all([
+  const [proServices, proBookings, proAvailability, proConversations] = await Promise.all([
     db
       .select()
       .from(services)
@@ -256,6 +300,25 @@ async function ProfessionalDashboardView({
       .select({ dayOfWeek: availability.dayOfWeek, startTime: availability.startTime, endTime: availability.endTime })
       .from(availability)
       .where(eq(availability.professionalId, profile.id)),
+
+    db
+      .select({
+        id: conversations.id,
+        professionalId: conversations.professionalId,
+        updatedAt: conversations.updatedAt,
+        otherName: users.name,
+        unreadCount: count(messages.id),
+      })
+      .from(conversations)
+      .innerJoin(users, eq(conversations.customerId, users.id))
+      .leftJoin(messages, and(
+        eq(messages.conversationId, conversations.id),
+        eq(messages.isRead, false),
+        sql`${messages.senderId} != ${userId}`
+      ))
+      .where(eq(conversations.professionalId, profile.id))
+      .groupBy(conversations.id, users.name)
+      .orderBy(desc(conversations.updatedAt)),
   ]);
 
   const pending   = proBookings.filter((b) => b.status === "PENDING");
@@ -264,6 +327,8 @@ async function ProfessionalDashboardView({
   const totalEarned = proBookings
     .filter((b) => b.status === "COMPLETED")
     .reduce((sum, b) => sum + b.totalPrice, 0);
+
+  const proTotalUnread = proConversations.reduce((sum, c) => sum + c.unreadCount, 0);
 
   return (
     <>
@@ -324,6 +389,14 @@ async function ProfessionalDashboardView({
           </TabsTrigger>
           <TabsTrigger value="services" className="rounded-xl">
             My services ({proServices.length})
+          </TabsTrigger>
+          <TabsTrigger value="messages" className="rounded-xl gap-1.5">
+            Messages
+            {proTotalUnread > 0 && (
+              <span className="bg-[var(--terra)] text-white text-xs px-1.5 py-0.5 rounded-full">
+                {proTotalUnread}
+              </span>
+            )}
           </TabsTrigger>
         </TabsList>
 
@@ -404,6 +477,10 @@ async function ProfessionalDashboardView({
             </div>
           </div>
         </TabsContent>
+
+        <TabsContent value="messages">
+          <InboxTab conversations={proConversations} currentUserId={userId} />
+        </TabsContent>
       </Tabs>
     </>
   );
@@ -422,6 +499,8 @@ function CustomerBookingCard({
     status: string;
     totalPrice: number;
     notes: string | null;
+    recurringGroupId: string | null;
+    recurringPattern: string | null;
     serviceName: string;
     serviceDuration: number;
     professionalName: string;
@@ -435,11 +514,17 @@ function CustomerBookingCard({
   return (
     <div className="bg-white rounded-2xl p-6 border border-[var(--border)] flex flex-col sm:flex-row items-start justify-between gap-4">
       <div className="flex-1">
-        <div className="flex items-center gap-2 mb-1">
+        <div className="flex items-center gap-2 mb-1 flex-wrap">
           <p className="font-semibold">{booking.serviceName}</p>
           <Badge className={`text-xs border ${STATUS_STYLES[booking.status] ?? ""}`}>
             {booking.status}
           </Badge>
+          {booking.recurringGroupId && (
+            <Badge className="text-xs border bg-violet-50 text-violet-700 border-violet-200 gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-violet-500" />
+              {booking.recurringPattern ?? "Recurring"}
+            </Badge>
+          )}
         </div>
         <p className="text-sm text-[var(--terra)]">with {booking.professionalName}</p>
         <p className="text-xs text-[var(--muted-foreground)]">{booking.professionalCategory}</p>
@@ -463,10 +548,18 @@ function CustomerBookingCard({
       </div>
       <div className="flex flex-col items-end gap-3 shrink-0">
         <p className="font-display text-xl font-semibold">${booking.totalPrice}</p>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap justify-end">
           <Link href={`/professionals/${booking.professionalId}`}>
             <Button variant="outline" size="sm" className="rounded-xl text-xs">View pro</Button>
           </Link>
+          {(booking.status === "PENDING" || booking.status === "CONFIRMED") && (
+            <CancelBookingButton
+              bookingId={booking.id}
+              serviceName={booking.serviceName}
+              professionalName={booking.professionalName}
+              recurringGroupId={booking.recurringGroupId ?? undefined}
+            />
+          )}
           {showReview && booking.status === "COMPLETED" && !hasReview && (
             <ReviewButton bookingId={booking.id} professionalName={booking.professionalName} />
           )}

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
-import { CheckCircle, Loader2 } from "lucide-react";
+import { CheckCircle, Loader2, RefreshCw } from "lucide-react";
 import { format, isBefore, startOfDay } from "date-fns";
 
 const TIME_SLOTS = [
@@ -43,6 +43,9 @@ export function BookingForm({ professional, services, selectedServiceId }: Props
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const [selectedTime, setSelectedTime] = useState<string>("");
   const [notes, setNotes] = useState("");
+  const [recurringEnabled, setRecurringEnabled] = useState(false);
+  const [recurringPattern, setRecurringPattern] = useState<"weekly" | "biweekly" | "monthly">("weekly");
+  const [recurringCount, setRecurringCount] = useState(4);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -73,6 +76,10 @@ export function BookingForm({ professional, services, selectedServiceId }: Props
           serviceId: selectedService.id,
           date: bookingDate.toISOString(),
           notes,
+          ...(recurringEnabled && {
+            recurringPattern,
+            recurringCount,
+          }),
         }),
       });
 
@@ -265,10 +272,83 @@ export function BookingForm({ professional, services, selectedServiceId }: Props
                 placeholder="Describe any specific needs, access instructions, or preferences…"
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                rows={5}
+                rows={4}
                 className="rounded-2xl resize-none"
               />
             </div>
+
+            {/* Recurring toggle */}
+            <div className="mb-6 rounded-2xl border border-[var(--border)] overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setRecurringEnabled(!recurringEnabled)}
+                className={`w-full flex items-center justify-between p-4 text-left transition-colors ${
+                  recurringEnabled ? "bg-violet-50" : "hover:bg-[var(--cream)]"
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${
+                    recurringEnabled ? "bg-violet-100" : "bg-[var(--cream-dark)]"
+                  }`}>
+                    <RefreshCw size={15} className={recurringEnabled ? "text-violet-600" : "text-[var(--muted-foreground)]"} />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold">Repeat this booking</p>
+                    <p className="text-xs text-[var(--muted-foreground)]">Book multiple sessions at a discount</p>
+                  </div>
+                </div>
+                <div className={`w-10 h-6 rounded-full transition-colors relative ${recurringEnabled ? "bg-violet-500" : "bg-[var(--border)]"}`}>
+                  <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${recurringEnabled ? "translate-x-4" : "translate-x-0.5"}`} />
+                </div>
+              </button>
+
+              {recurringEnabled && (
+                <div className="px-4 pb-4 pt-2 bg-violet-50 border-t border-violet-100 space-y-4">
+                  <div>
+                    <Label className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wider mb-2 block">
+                      Frequency
+                    </Label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {(["weekly", "biweekly", "monthly"] as const).map((p) => (
+                        <button
+                          key={p}
+                          type="button"
+                          onClick={() => setRecurringPattern(p)}
+                          className={`py-2 rounded-xl text-sm border transition-all capitalize ${
+                            recurringPattern === p
+                              ? "bg-violet-500 text-white border-violet-500"
+                              : "bg-white border-[var(--border)] hover:border-violet-300"
+                          }`}
+                        >
+                          {p}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wider mb-2 block">
+                      Sessions — {recurringCount}
+                    </Label>
+                    <input
+                      type="range"
+                      min={2}
+                      max={12}
+                      value={recurringCount}
+                      onChange={(e) => setRecurringCount(Number(e.target.value))}
+                      className="w-full accent-violet-500"
+                    />
+                    <div className="flex justify-between text-xs text-[var(--muted-foreground)] mt-1">
+                      <span>2</span>
+                      <span className="text-violet-600 font-medium">
+                        Total: ${((selectedService?.price ?? 0) * recurringCount).toFixed(0)}
+                      </span>
+                      <span>12</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
             <div className="flex gap-3">
               <Button
                 variant="outline"
@@ -321,11 +401,28 @@ export function BookingForm({ professional, services, selectedServiceId }: Props
                   <span className="font-medium text-right max-w-[200px]">{notes}</span>
                 </div>
               )}
+              {recurringEnabled && (
+                <>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-[var(--muted-foreground)]">Repeat</span>
+                    <span className="font-medium capitalize">{recurringPattern} · {recurringCount} sessions</span>
+                  </div>
+                </>
+              )}
               <hr className="border-[var(--border)]" />
               <div className="flex justify-between">
                 <span className="font-semibold">Total</span>
-                <span className="font-display text-2xl font-semibold">${selectedService?.price}</span>
+                <span className="font-display text-2xl font-semibold">
+                  ${recurringEnabled
+                    ? ((selectedService?.price ?? 0) * recurringCount).toFixed(0)
+                    : selectedService?.price}
+                </span>
               </div>
+              {recurringEnabled && (
+                <p className="text-xs text-[var(--muted-foreground)] text-right">
+                  ${selectedService?.price}/session × {recurringCount} sessions
+                </p>
+              )}
             </div>
 
             {error && (

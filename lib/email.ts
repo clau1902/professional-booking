@@ -130,6 +130,21 @@ export async function sendBookingCompletedToCustomer({
   return resend.emails.send({ from: FROM, to, subject: `How was your session with ${professionalName}?`, html });
 }
 
+export async function sendBookingCancelledToProfessional({
+  to, professionalName, customerName, serviceName, date, appUrl,
+}: {
+  to: string; professionalName: string; customerName: string;
+  serviceName: string; date: Date; appUrl: string;
+}) {
+  const html = baseTemplate(
+    "A booking was cancelled",
+    `<p>Hi ${professionalName}, <strong>${customerName}</strong> has cancelled their <strong>${serviceName}</strong> booking on ${date.toLocaleDateString("en-US", { month: "long", day: "numeric" })}.</p>
+    <p>Your calendar is now free for that slot.</p>
+    <a href="${appUrl}/dashboard" class="cta">View your bookings</a>`
+  );
+  return resend.emails.send({ from: FROM, to, subject: `Booking cancelled by ${customerName}`, html });
+}
+
 export async function sendBookingCancelledToCustomer({
   to, customerName, professionalName, serviceName, date, appUrl,
 }: {

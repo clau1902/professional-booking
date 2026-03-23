@@ -12,11 +12,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Please sign in to book." }, { status: 401 });
   }
 
-  const { professionalId, serviceId, date, notes } = await req.json();
+  const { professionalId, serviceId, date, notes, recurringPattern, recurringCount } = await req.json();
 
   if (!professionalId || !serviceId || !date) {
     return NextResponse.json({ error: "Missing required fields." }, { status: 400 });
   }
+
+  const sessions = recurringPattern && recurringCount > 1 ? Math.min(Number(recurringCount), 12) : 1;
 
   // Fetch service and professional details for the Stripe line item
   const [service] = await db
@@ -50,22 +52,28 @@ export async function POST(req: NextRequest) {
       {
         price_data: {
           currency: "usd",
-          unit_amount: Math.round(service.price * 100), // cents
+          unit_amount: Math.round(service.price * 100), // cents per session
           product_data: {
-            name: service.name,
-            description: `${service.duration} min session with ${pro.userName} · ${pro.category}`,
+            name: sessions > 1
+              ? `${service.name} × ${sessions} sessions`
+              : service.name,
+            description: sessions > 1
+              ? `${sessions} ${recurringPattern} sessions · ${service.duration} min each with ${pro.userName}`
+              : `${service.duration} min session with ${pro.userName} · ${pro.category}`,
           },
         },
-        quantity: 1,
+        quantity: sessions,
       },
     ],
     metadata: {
-      customerId:     session.user.id,
+      customerId:       session.user.id,
       professionalId,
       serviceId,
       date,
-      notes:          notes ?? "",
-      totalPrice:     String(service.price),
+      notes:            notes ?? "",
+      totalPrice:       String(service.price * sessions),
+      recurringPattern: recurringPattern ?? "",
+      recurringCount:   sessions > 1 ? String(sessions) : "",
     },
     success_url: `${appUrl}/book/success?session_id={CHECKOUT_SESSION_ID}`,
     cancel_url:  `${appUrl}/book/${professionalId}?cancelled=true`,

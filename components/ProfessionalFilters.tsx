@@ -18,9 +18,10 @@ interface Props {
     verified?: string;
     sort?: string;
   };
+  activeFilterCount?: number;
 }
 
-export function ProfessionalFilters({ currentParams }: Props) {
+export function ProfessionalFilters({ currentParams, activeFilterCount = 0 }: Props) {
   const router = useRouter();
   const pathname = usePathname();
 
@@ -55,9 +56,16 @@ export function ProfessionalFilters({ currentParams }: Props) {
 
   return (
     <div className="bg-white border border-[var(--border)] rounded-2xl p-6 sticky top-24">
-      <div className="flex items-center gap-2 mb-6">
-        <SlidersHorizontal size={16} />
-        <h3 className="font-semibold text-sm">Filters</h3>
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-2">
+          <SlidersHorizontal size={16} />
+          <h3 className="font-semibold text-sm">Filters</h3>
+        </div>
+        {activeFilterCount > 0 && (
+          <span className="text-xs bg-[var(--terra)] text-white px-2 py-0.5 rounded-full font-medium">
+            {activeFilterCount}
+          </span>
+        )}
       </div>
 
       {/* Search */}
@@ -69,6 +77,7 @@ export function ProfessionalFilters({ currentParams }: Props) {
           placeholder="Name, skill, keyword…"
           value={q}
           onChange={(e) => setQ(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && apply()}
           className="text-sm rounded-xl"
         />
       </div>
@@ -84,6 +93,7 @@ export function ProfessionalFilters({ currentParams }: Props) {
           placeholder="City or zip code"
           value={location}
           onChange={(e) => setLocation(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && apply()}
           className="text-sm rounded-xl"
         />
       </div>

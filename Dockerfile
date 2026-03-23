@@ -6,6 +6,10 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 
+# Copy schema and config so this stage can also run migrations
+COPY drizzle.config.ts ./
+COPY db/ ./db/
+
 # ─── Stage 2: Build the app ───────────────────────────────────────────────────
 FROM node:20-alpine AS builder
 WORKDIR /app

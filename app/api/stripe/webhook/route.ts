@@ -32,8 +32,20 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ received: true });
 }
 
+function getRecurringDates(start: Date, pattern: string, count: number): Date[] {
+  const dates: Date[] = [start];
+  for (let i = 1; i < count; i++) {
+    const next = new Date(start);
+    if (pattern === "weekly") next.setDate(start.getDate() + 7 * i);
+    else if (pattern === "biweekly") next.setDate(start.getDate() + 14 * i);
+    else next.setMonth(start.getMonth() + i); // monthly
+    dates.push(next);
+  }
+  return dates;
+}
+
 export async function createBookingFromSession(session: Stripe.Checkout.Session) {
-  const { customerId, professionalId, serviceId, date, notes, totalPrice } =
+  const { customerId, professionalId, serviceId, date, notes, totalPrice, recurringPattern, recurringCount } =
     session.metadata ?? {};
 
   if (!customerId || !professionalId || !serviceId || !date || !totalPrice) return;
@@ -47,16 +59,26 @@ export async function createBookingFromSession(session: Stripe.Checkout.Session)
 
   if (existing.length > 0) return;
 
-  await db.insert(bookings).values({
-    customerId,
-    professionalId,
-    serviceId,
-    date: new Date(date),
-    notes: notes || null,
-    totalPrice: parseFloat(totalPrice),
-    status: "PENDING",
-    stripeSessionId: session.id,
-  });
+  const startDate = new Date(date);
+  const count = recurringPattern && recurringCount ? parseInt(recurringCount) : 1;
+  const pricePerSession = parseFloat(totalPrice) / count;
+  const groupId = count > 1 ? crypto.randomUUID() : null;
+  const dates = count > 1 ? getRecurringDates(startDate, recurringPattern!, count) : [startDate];
+
+  await db.insert(bookings).values(
+    dates.map((d, i) => ({
+      customerId,
+      professionalId,
+      serviceId,
+      date: d,
+      notes: notes || null,
+      totalPrice: pricePerSession,
+      status: "PENDING" as const,
+      stripeSessionId: i === 0 ? session.id : null,
+      recurringGroupId: groupId,
+      recurringPattern: recurringPattern || null,
+    }))
+  );
 
   // Send emails — fetch needed data
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
@@ -73,13 +95,16 @@ export async function createBookingFromSession(session: Stripe.Checkout.Session)
   if (!customer[0] || !professional[0] || !service[0]) return;
 
   const bookingDate = new Date(date);
+  const emailServiceName = count > 1
+    ? `${service[0].name} × ${count} sessions (${recurringPattern})`
+    : service[0].name;
 
   await Promise.allSettled([
     sendBookingRequestedToCustomer({
       to: customer[0].email,
       customerName: customer[0].name,
       professionalName: professional[0].name,
-      serviceName: service[0].name,
+      serviceName: emailServiceName,
       date: bookingDate,
       totalPrice: parseFloat(totalPrice),
       appUrl,
@@ -88,7 +113,7 @@ export async function createBookingFromSession(session: Stripe.Checkout.Session)
       to: professional[0].email,
       professionalName: professional[0].name,
       customerName: customer[0].name,
-      serviceName: service[0].name,
+      serviceName: emailServiceName,
       date: bookingDate,
       notes,
       appUrl,

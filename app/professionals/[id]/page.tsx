@@ -20,6 +20,9 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import { ProAvatar, ProCover } from "@/components/ProAvatar";
+import { MessageButton } from "@/components/MessageButton";
+import { auth } from "@/lib/auth";
+import { headers } from "next/headers";
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -29,6 +32,8 @@ export default async function ProfessionalProfilePage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  const session = await auth.api.getSession({ headers: await headers() });
+  const currentUserId = session?.user.id;
 
   const [pro] = await db
     .select({
@@ -369,6 +374,12 @@ export default async function ProfessionalProfilePage({
                   Book a Session
                 </Button>
               </Link>
+              <MessageButton
+                professionalId={pro.id}
+                professionalName={pro.userName}
+                currentUserId={currentUserId}
+                variant="outline"
+              />
 
               <p className="text-center text-xs text-[var(--muted-foreground)] mt-3">
                 Free cancellation up to 24h before
