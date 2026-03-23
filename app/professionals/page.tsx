@@ -103,7 +103,12 @@ export default async function ProfessionalsPage({
   searchParams: Promise<SearchParams>;
 }) {
   const params = await searchParams;
-  const pros = await getProfessionals(params);
+  let pros: Awaited<ReturnType<typeof getProfessionals>> = [];
+  try {
+    pros = await getProfessionals(params);
+  } catch {
+    // DB unavailable — render empty state
+  }
   const activeCategory = params.category || "All";
 
   const activeFilterCount = [

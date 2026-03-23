@@ -17,21 +17,22 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# These are only needed at build time for Next.js to compile
-# Runtime secrets are injected via environment variables at container start
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
 
-# Provide placeholder values so the build doesn't throw on missing env checks.
-# Real values are injected at runtime.
+# Placeholders for server-only secrets (injected at runtime)
 ENV DATABASE_URL=postgresql://placeholder:placeholder@placeholder:5432/placeholder
 ENV BETTER_AUTH_SECRET=placeholder
 ENV BETTER_AUTH_URL=http://localhost:3000
-ENV NEXT_PUBLIC_APP_URL=http://localhost:3000
 ENV STRIPE_SECRET_KEY=sk_test_placeholder
 ENV STRIPE_WEBHOOK_SECRET=whsec_placeholder
-ENV NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_placeholder
 ENV RESEND_API_KEY=re_placeholder
+
+# NEXT_PUBLIC_* vars are baked into the JS bundle at build time
+ARG NEXT_PUBLIC_APP_URL
+ARG NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+ENV NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL}
+ENV NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY}
 
 RUN npm run build
 

@@ -35,53 +35,67 @@ export default async function ProfessionalProfilePage({
   const session = await auth.api.getSession({ headers: await headers() });
   const currentUserId = session?.user.id;
 
-  const [pro] = await db
-    .select({
-      id: professionals.id,
-      bio: professionals.bio,
-      category: professionals.category,
-      hourlyRate: professionals.hourlyRate,
-      location: professionals.location,
-      rating: professionals.rating,
-      reviewCount: professionals.reviewCount,
-      isVerified: professionals.isVerified,
-      isAvailable: professionals.isAvailable,
-      yearsExp: professionals.yearsExp,
-      coverImage: professionals.coverImage,
-      userName: users.name,
-      userAvatar: users.avatar,
-      userEmail: users.email,
-    })
-    .from(professionals)
-    .innerJoin(users, eq(professionals.userId, users.id))
-    .where(eq(professionals.id, id));
+  let pro: {
+    id: string; bio: string | null; category: string; hourlyRate: number;
+    location: string; rating: number; reviewCount: number; isVerified: boolean;
+    isAvailable: boolean; yearsExp: number; coverImage: string | null;
+    userName: string; userAvatar: string | null; userEmail: string;
+  } | undefined;
+  let proServices: typeof services.$inferSelect[] = [];
+  let proReviews: {
+    id: string; rating: number; comment: string | null;
+    createdAt: Date; customerName: string; customerAvatar: string | null;
+  }[] = [];
+  let proAvailability: typeof availability.$inferSelect[] = [];
+
+  try {
+    [pro] = await db
+      .select({
+        id: professionals.id,
+        bio: professionals.bio,
+        category: professionals.category,
+        hourlyRate: professionals.hourlyRate,
+        location: professionals.location,
+        rating: professionals.rating,
+        reviewCount: professionals.reviewCount,
+        isVerified: professionals.isVerified,
+        isAvailable: professionals.isAvailable,
+        yearsExp: professionals.yearsExp,
+        coverImage: professionals.coverImage,
+        userName: users.name,
+        userAvatar: users.avatar,
+        userEmail: users.email,
+      })
+      .from(professionals)
+      .innerJoin(users, eq(professionals.userId, users.id))
+      .where(eq(professionals.id, id));
+
+    if (!pro) notFound();
+
+    [proServices, proReviews, proAvailability] = await Promise.all([
+      db.select().from(services).where(eq(services.professionalId, id)),
+      db
+        .select({
+          id: reviews.id,
+          rating: reviews.rating,
+          comment: reviews.comment,
+          createdAt: reviews.createdAt,
+          customerName: users.name,
+          customerAvatar: users.avatar,
+        })
+        .from(reviews)
+        .innerJoin(bookings, eq(reviews.bookingId, bookings.id))
+        .innerJoin(users, eq(bookings.customerId, users.id))
+        .where(eq(reviews.professionalId, id))
+        .limit(10),
+      db.select().from(availability).where(eq(availability.professionalId, id)),
+    ]);
+  } catch (e) {
+    if ((e as { digest?: string })?.digest?.startsWith("NEXT_NOT_FOUND")) throw e;
+    notFound();
+  }
 
   if (!pro) notFound();
-
-  const proServices = await db
-    .select()
-    .from(services)
-    .where(eq(services.professionalId, id));
-
-  const proReviews = await db
-    .select({
-      id: reviews.id,
-      rating: reviews.rating,
-      comment: reviews.comment,
-      createdAt: reviews.createdAt,
-      customerName: users.name,
-      customerAvatar: users.avatar,
-    })
-    .from(reviews)
-    .innerJoin(bookings, eq(reviews.bookingId, bookings.id))
-    .innerJoin(users, eq(bookings.customerId, users.id))
-    .where(eq(reviews.professionalId, id))
-    .limit(10);
-
-  const proAvailability = await db
-    .select()
-    .from(availability)
-    .where(eq(availability.professionalId, id));
 
   const ratingDist = [5, 4, 3, 2, 1].map((star) => ({
     star,
