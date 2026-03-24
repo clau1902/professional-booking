@@ -32,7 +32,7 @@ export function InboxTab({ conversations, currentUserId }: Props) {
         <MessageSquare size={32} className="mx-auto mb-4 text-[var(--muted-foreground)]" />
         <h3 className="font-display text-xl mb-1">No messages yet</h3>
         <p className="text-sm text-[var(--muted-foreground)]">
-          Messages from customers will appear here.
+          Your conversations will appear here.
         </p>
       </div>
     );
