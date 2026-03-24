@@ -56,6 +56,10 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --chown=nextjs:nodejs db/migrate.mjs ./db/migrate.mjs
 COPY --chown=nextjs:nodejs db/migrations ./db/migrations
 
+# Copy packages needed by the migration script (not bundled in standalone output)
+COPY --from=deps /app/node_modules/postgres ./node_modules/postgres
+COPY --from=deps /app/node_modules/drizzle-orm ./node_modules/drizzle-orm
+
 USER nextjs
 
 EXPOSE 3000
