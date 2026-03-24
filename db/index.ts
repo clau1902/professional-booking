@@ -8,7 +8,7 @@ const globalForDb = globalThis as unknown as {
 
 const connection =
   globalForDb.connection ??
-  postgres(process.env.DATABASE_URL!, { max: 1 });
+  postgres((process.env.POSTGRES_URL ?? process.env.DATABASE_URL)!, { max: 1 });
 
 if (process.env.NODE_ENV !== "production") globalForDb.connection = connection;
 
