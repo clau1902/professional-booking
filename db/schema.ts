@@ -28,6 +28,7 @@ export const users = pgTable("users", {
   emailVerified: boolean("email_verified").notNull().default(false),
   password: text("password"),  // optional — Better Auth stores it in `account`
   role: userRoleEnum("role").notNull().default("CUSTOMER"),
+  image: text("image"),
   avatar: text("avatar"),
   phone: varchar("phone", { length: 50 }),
   createdAt: timestamp("created_at").notNull().defaultNow(),
