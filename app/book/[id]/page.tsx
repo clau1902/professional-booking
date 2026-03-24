@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { db } from "@/db";
-import { professionals, users, services } from "@/db/schema";
+import { professionals, users, services, availability } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { BookingForm } from "@/components/BookingForm";
@@ -39,10 +39,17 @@ export default async function BookingPage({
 
   if (!pro) notFound();
 
-  const proServices = await db
-    .select()
-    .from(services)
-    .where(eq(services.professionalId, id));
+  const [proServices, proAvailability] = await Promise.all([
+    db.select().from(services).where(eq(services.professionalId, id)),
+    db
+      .select({
+        dayOfWeek: availability.dayOfWeek,
+        startTime: availability.startTime,
+        endTime: availability.endTime,
+      })
+      .from(availability)
+      .where(eq(availability.professionalId, id)),
+  ]);
 
   const selectedService = serviceId
     ? proServices.find((s) => s.id === serviceId)
@@ -70,6 +77,7 @@ export default async function BookingPage({
               professional={pro}
               services={proServices}
               selectedServiceId={selectedService?.id}
+              availability={proAvailability}
             />
           </div>
 

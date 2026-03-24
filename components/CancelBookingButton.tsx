@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { X, Loader2, AlertTriangle, RefreshCw } from "lucide-react";
+import { toast } from "sonner";
 
 export function CancelBookingButton({
   bookingId,
@@ -35,10 +36,12 @@ export function CancelBookingButton({
     if (!res.ok) {
       const data = await res.json();
       setError(data.error ?? "Something went wrong");
+      toast.error("Failed to cancel booking. Please try again.");
       return;
     }
 
     setOpen(false);
+    toast.success(cancelSeries ? "All sessions in the series cancelled." : "Booking cancelled successfully.");
     router.refresh();
   }
 

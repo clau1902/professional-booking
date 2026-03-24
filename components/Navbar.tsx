@@ -27,6 +27,7 @@ export function Navbar() {
   const [mobileCategories, setMobileCategories] = useState(false);
   const [catOpen, setCatOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [confirmSignOut, setConfirmSignOut] = useState(false);
   const catRef = useRef<HTMLDivElement>(null);
   const userMenuRef = useRef<HTMLDivElement>(null);
 
@@ -72,7 +73,11 @@ export function Navbar() {
         <nav className="hidden md:flex items-center gap-6">
           <Link
             href="/professionals"
-            className="text-sm font-medium text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
+            className={`text-sm font-medium transition-colors ${
+              pathname.startsWith("/professionals") || pathname.startsWith("/book")
+                ? "text-[var(--terra)]"
+                : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+            }`}
           >
             Browse all
           </Link>
@@ -81,7 +86,11 @@ export function Navbar() {
           <div className="relative" ref={catRef}>
             <button
               onClick={() => setCatOpen(!catOpen)}
-              className="flex items-center gap-1 text-sm font-medium text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors outline-none"
+              className={`flex items-center gap-1 text-sm font-medium transition-colors outline-none ${
+                pathname.startsWith("/professionals") || pathname.startsWith("/book")
+                  ? "text-[var(--terra)]"
+                  : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+              }`}
             >
               Categories
               <ChevronDown size={14} className={`transition-transform duration-200 ${catOpen ? "rotate-180" : ""}`} />
@@ -106,7 +115,11 @@ export function Navbar() {
 
           <Link
             href="/dashboard"
-            className="text-sm font-medium text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
+            className={`text-sm font-medium transition-colors ${
+              pathname === "/dashboard"
+                ? "text-[var(--terra)]"
+                : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+            }`}
           >
             My bookings
           </Link>
@@ -139,13 +152,33 @@ export function Navbar() {
                     <User size={14} />
                     My bookings
                   </Link>
-                  <button
-                    onClick={() => { signOut(); setUserMenuOpen(false); }}
-                    className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-[var(--foreground)] hover:bg-red-50 hover:text-red-600 transition-colors w-full"
-                  >
-                    <LogOut size={14} />
-                    Sign out
-                  </button>
+                  {confirmSignOut ? (
+                    <div className="px-3 py-2 space-y-1.5">
+                      <p className="text-xs text-[var(--muted-foreground)]">Sign out?</p>
+                      <div className="flex gap-1.5">
+                        <button
+                          onClick={() => { signOut(); setUserMenuOpen(false); setConfirmSignOut(false); }}
+                          className="flex-1 py-1.5 rounded-lg text-xs bg-red-600 text-white hover:bg-red-700 transition-colors"
+                        >
+                          Yes, sign out
+                        </button>
+                        <button
+                          onClick={() => setConfirmSignOut(false)}
+                          className="flex-1 py-1.5 rounded-lg text-xs border border-[var(--border)] hover:bg-[var(--cream-dark)] transition-colors"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setConfirmSignOut(true)}
+                      className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-[var(--foreground)] hover:bg-red-50 hover:text-red-600 transition-colors w-full"
+                    >
+                      <LogOut size={14} />
+                      Sign out
+                    </button>
+                  )}
                 </div>
               )}
             </div>
@@ -231,13 +264,33 @@ export function Navbar() {
           {user ? (
             <>
               <div className="px-2 py-1 text-xs text-[var(--muted-foreground)]">{user.email}</div>
-              <button
-                onClick={() => { signOut(); setOpen(false); }}
-                className="flex items-center gap-2 text-sm font-medium py-2 text-red-600 w-full"
-              >
-                <LogOut size={14} />
-                Sign out
-              </button>
+              {confirmSignOut ? (
+                <div className="py-2 space-y-2">
+                  <p className="text-xs text-[var(--muted-foreground)]">Are you sure you want to sign out?</p>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => { signOut(); setOpen(false); setConfirmSignOut(false); }}
+                      className="flex-1 py-2 rounded-xl text-sm bg-red-600 text-white hover:bg-red-700 transition-colors"
+                    >
+                      Yes, sign out
+                    </button>
+                    <button
+                      onClick={() => setConfirmSignOut(false)}
+                      className="flex-1 py-2 rounded-xl text-sm border border-[var(--border)] hover:bg-[var(--cream-dark)] transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setConfirmSignOut(true)}
+                  className="flex items-center gap-2 text-sm font-medium py-2 text-red-600 w-full"
+                >
+                  <LogOut size={14} />
+                  Sign out
+                </button>
+              )}
             </>
           ) : (
             <>

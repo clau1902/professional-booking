@@ -11,6 +11,7 @@ import { ProfessionalFilters } from "@/components/ProfessionalFilters";
 import { ProfessionalsSearch } from "@/components/ProfessionalsSearch";
 import { ProAvatar, ProCover } from "@/components/ProAvatar";
 import { Suspense } from "react";
+import { X } from "lucide-react";
 
 const CATEGORIES = [
   "All",
@@ -162,9 +163,19 @@ export default async function ProfessionalsPage({
           })}
         </div>
 
+        {/* Mobile filter trigger — sits above the results */}
+        <div className="lg:hidden mb-4">
+          <Suspense>
+            <ProfessionalFilters
+              currentParams={params}
+              activeFilterCount={activeFilterCount}
+            />
+          </Suspense>
+        </div>
+
         <div className="flex flex-col lg:flex-row gap-8">
-          {/* Sidebar filters */}
-          <aside className="lg:w-64 shrink-0">
+          {/* Sidebar filters — desktop only */}
+          <aside className="hidden lg:block lg:w-64 shrink-0">
             <Suspense>
               <ProfessionalFilters
                 currentParams={params}
@@ -175,14 +186,61 @@ export default async function ProfessionalsPage({
 
           {/* Results grid */}
           <div className="flex-1">
+            {/* Active filter pills */}
+            {activeFilterCount > 0 && (() => {
+              function urlWithout(key: string) {
+                const p = new URLSearchParams();
+                if (params.category) p.set("category", params.category);
+                if (params.q && key !== "q") p.set("q", params.q);
+                if (params.location && key !== "location") p.set("location", params.location);
+                if (params.minRate && key !== "minRate") p.set("minRate", params.minRate);
+                if (params.maxRate && key !== "maxRate") p.set("maxRate", params.maxRate);
+                if (params.verified === "true" && key !== "verified") p.set("verified", "true");
+                if (params.sort && params.sort !== "rating" && key !== "sort") p.set("sort", params.sort);
+                return `/professionals${p.toString() ? `?${p.toString()}` : ""}`;
+              }
+              const pills = [
+                params.q && { label: `"${params.q}"`, key: "q" },
+                params.location && { label: `📍 ${params.location}`, key: "location" },
+                params.minRate && { label: `From $${params.minRate}/hr`, key: "minRate" },
+                params.maxRate && { label: `Up to $${params.maxRate}/hr`, key: "maxRate" },
+                params.verified === "true" && { label: "Verified only", key: "verified" },
+                params.sort && params.sort !== "rating" && {
+                  label: { price_asc: "Price ↑", price_desc: "Price ↓", reviews: "Most reviewed" }[params.sort] ?? params.sort,
+                  key: "sort",
+                },
+              ].filter(Boolean) as { label: string; key: string }[];
+
+              return (
+                <div className="flex flex-wrap items-center gap-2 mb-5">
+                  {pills.map(({ label, key }) => (
+                    <Link
+                      key={key}
+                      href={urlWithout(key)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-[var(--border)] rounded-full text-sm hover:border-red-300 hover:text-red-600 transition-colors group"
+                    >
+                      {label}
+                      <X size={12} className="text-[var(--muted-foreground)] group-hover:text-red-500" />
+                    </Link>
+                  ))}
+                  <Link
+                    href={`/professionals${params.category ? `?category=${params.category}` : ""}`}
+                    className="text-xs text-[var(--muted-foreground)] hover:text-red-600 underline underline-offset-2 transition-colors"
+                  >
+                    Clear all
+                  </Link>
+                </div>
+              );
+            })()}
+
             {pros.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-24 text-center">
                 <div className="text-5xl mb-4">🔍</div>
                 <h3 className="font-display text-2xl mb-2">No professionals found</h3>
                 <p className="text-[var(--muted-foreground)] mb-6">
-                  Try adjusting your filters or search terms.
+                  Try removing some filters or broadening your search.
                 </p>
-                <Link href="/professionals">
+                <Link href={`/professionals${params.category ? `?category=${params.category}` : ""}`}>
                   <Button variant="outline" className="rounded-full">Clear all filters</Button>
                 </Link>
               </div>

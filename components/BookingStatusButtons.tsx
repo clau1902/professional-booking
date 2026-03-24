@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Loader2, Check, XCircle, CheckCheck } from "lucide-react";
+import { toast } from "sonner";
 
 export function BookingStatusButtons({
   bookingId,
@@ -17,12 +18,22 @@ export function BookingStatusButtons({
 
   async function updateStatus(newStatus: string) {
     setLoading(newStatus);
-    await fetch(`/api/professional/bookings/${bookingId}`, {
+    const res = await fetch(`/api/professional/bookings/${bookingId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status: newStatus }),
     });
     setLoading(null);
+    if (res.ok) {
+      const messages: Record<string, string> = {
+        CONFIRMED: "Booking confirmed.",
+        CANCELLED: "Booking declined.",
+        COMPLETED: "Booking marked as complete.",
+      };
+      toast.success(messages[newStatus] ?? "Status updated.");
+    } else {
+      toast.error("Failed to update booking status. Please try again.");
+    }
     router.refresh();
   }
 

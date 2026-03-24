@@ -10,6 +10,23 @@ import { Loader2, Eye, EyeOff, User, Briefcase } from "lucide-react";
 import { Suspense } from "react";
 import { signUp } from "@/lib/auth-client";
 
+function friendlySignUpError(message?: string): string {
+  const m = message?.toLowerCase() ?? "";
+  if (m.includes("already exists") || m.includes("use another email"))
+    return "We couldn't create an account with that email. Try a different one or sign in.";
+  if (m.includes("invalid email"))
+    return "That doesn't look like a valid email address.";
+  if (m.includes("password too short"))
+    return "Password must be at least 8 characters.";
+  if (m.includes("password too long"))
+    return "Password is too long. Please use fewer than 128 characters.";
+  if (m.includes("failed to create user"))
+    return "We couldn't create your account. Please try again in a moment.";
+  if (m.includes("too many") || m.includes("rate"))
+    return "Too many attempts. Please wait a moment and try again.";
+  return "Something went wrong. Please try again.";
+}
+
 function RegisterForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -22,6 +39,20 @@ function RegisterForm() {
   const [role, setRole] = useState<"CUSTOMER" | "PROFESSIONAL">(defaultRole as "CUSTOMER" | "PROFESSIONAL");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  function passwordStrength(p: string): { score: number; label: string; color: string } {
+    if (!p) return { score: 0, label: "", color: "" };
+    let score = 0;
+    if (p.length >= 8) score++;
+    if (p.length >= 12) score++;
+    if (/[A-Z]/.test(p)) score++;
+    if (/[0-9]/.test(p)) score++;
+    if (/[^A-Za-z0-9]/.test(p)) score++;
+    if (score <= 1) return { score, label: "Weak", color: "bg-red-400" };
+    if (score <= 3) return { score, label: "Fair", color: "bg-amber-400" };
+    return { score, label: "Strong", color: "bg-emerald-500" };
+  }
+  const strength = passwordStrength(password);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -38,7 +69,7 @@ function RegisterForm() {
     );
 
     if (signUpError) {
-      setError(signUpError.message ?? "Registration failed.");
+      setError(friendlySignUpError(signUpError.message));
       setLoading(false);
       return;
     }
@@ -182,6 +213,26 @@ function RegisterForm() {
                   {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
+              {password && (
+                <div className="mt-2 space-y-1">
+                  <div className="flex gap-1">
+                    {[1, 2, 3, 4, 5].map((i) => (
+                      <div
+                        key={i}
+                        className={`h-1 flex-1 rounded-full transition-colors duration-300 ${
+                          i <= strength.score ? strength.color : "bg-gray-200"
+                        }`}
+                      />
+                    ))}
+                  </div>
+                  <p className={`text-xs font-medium ${
+                    strength.score <= 1 ? "text-red-500" :
+                    strength.score <= 3 ? "text-amber-500" : "text-emerald-600"
+                  }`}>
+                    {strength.label}
+                  </p>
+                </div>
+              )}
             </div>
 
             {error && (

@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { ProAvatar, ProCover } from "@/components/ProAvatar";
 import { MessageButton } from "@/components/MessageButton";
+import { TimezoneNote } from "@/components/TimezoneNote";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { ShieldCheck, SlidersHorizontal } from "lucide-react";
+import { ShieldCheck, SlidersHorizontal, X } from "lucide-react";
 
 interface Props {
   currentParams: {
@@ -24,6 +24,7 @@ interface Props {
 export function ProfessionalFilters({ currentParams, activeFilterCount = 0 }: Props) {
   const router = useRouter();
   const pathname = usePathname();
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   const [q, setQ] = useState(currentParams.q ?? "");
   const [location, setLocation] = useState(currentParams.location ?? "");
@@ -42,6 +43,7 @@ export function ProfessionalFilters({ currentParams, activeFilterCount = 0 }: Pr
     if (verified) params.set("verified", "true");
     if (sort) params.set("sort", sort);
     router.push(`${pathname}?${params.toString()}`);
+    setMobileOpen(false);
   }
 
   function reset() {
@@ -52,22 +54,11 @@ export function ProfessionalFilters({ currentParams, activeFilterCount = 0 }: Pr
     setVerified(false);
     setSort("rating");
     router.push(pathname + (currentParams.category ? `?category=${currentParams.category}` : ""));
+    setMobileOpen(false);
   }
 
-  return (
-    <div className="bg-white border border-[var(--border)] rounded-2xl p-6 sticky top-24">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-2">
-          <SlidersHorizontal size={16} />
-          <h3 className="font-semibold text-sm">Filters</h3>
-        </div>
-        {activeFilterCount > 0 && (
-          <span className="text-xs bg-[var(--terra)] text-white px-2 py-0.5 rounded-full font-medium">
-            {activeFilterCount}
-          </span>
-        )}
-      </div>
-
+  const filterContent = (
+    <>
       {/* Search */}
       <div className="mb-5">
         <Label className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wider mb-2 block">
@@ -171,12 +162,7 @@ export function ProfessionalFilters({ currentParams, activeFilterCount = 0 }: Pr
       </div>
 
       <div className="flex gap-2">
-        <Button
-          onClick={reset}
-          variant="outline"
-          size="sm"
-          className="flex-1 rounded-xl text-xs"
-        >
+        <Button onClick={reset} variant="outline" size="sm" className="flex-1 rounded-xl text-xs">
           Reset
         </Button>
         <Button
@@ -187,6 +173,78 @@ export function ProfessionalFilters({ currentParams, activeFilterCount = 0 }: Pr
           Apply
         </Button>
       </div>
-    </div>
+    </>
+  );
+
+  return (
+    <>
+      {/* ── Mobile trigger button ── */}
+      <div className="lg:hidden">
+        <button
+          onClick={() => setMobileOpen(true)}
+          className="flex items-center gap-2 px-4 py-2.5 bg-white border border-[var(--border)] rounded-xl text-sm font-medium shadow-sm"
+        >
+          <SlidersHorizontal size={15} />
+          Filters
+          {activeFilterCount > 0 && (
+            <span className="bg-[var(--terra)] text-white text-xs px-1.5 py-0.5 rounded-full font-medium leading-none">
+              {activeFilterCount}
+            </span>
+          )}
+        </button>
+
+        {/* Backdrop */}
+        {mobileOpen && (
+          <div
+            className="fixed inset-0 z-40 bg-black/40"
+            onClick={() => setMobileOpen(false)}
+          />
+        )}
+
+        {/* Drawer */}
+        <div
+          className={`fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl shadow-2xl transition-transform duration-300 ${
+            mobileOpen ? "translate-y-0" : "translate-y-full"
+          }`}
+        >
+          <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-[var(--border)]">
+            <div className="flex items-center gap-2">
+              <SlidersHorizontal size={16} />
+              <h3 className="font-semibold text-sm">Filters</h3>
+              {activeFilterCount > 0 && (
+                <span className="text-xs bg-[var(--terra)] text-white px-2 py-0.5 rounded-full font-medium">
+                  {activeFilterCount}
+                </span>
+              )}
+            </div>
+            <button
+              onClick={() => setMobileOpen(false)}
+              className="text-[var(--muted-foreground)] hover:text-[var(--foreground)] p-1"
+            >
+              <X size={18} />
+            </button>
+          </div>
+          <div className="px-6 pt-5 pb-8 overflow-y-auto max-h-[75vh]">
+            {filterContent}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Desktop sidebar ── */}
+      <div className="hidden lg:block bg-white border border-[var(--border)] rounded-2xl p-6 sticky top-24">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-2">
+            <SlidersHorizontal size={16} />
+            <h3 className="font-semibold text-sm">Filters</h3>
+          </div>
+          {activeFilterCount > 0 && (
+            <span className="text-xs bg-[var(--terra)] text-white px-2 py-0.5 rounded-full font-medium">
+              {activeFilterCount}
+            </span>
+          )}
+        </div>
+        {filterContent}
+      </div>
+    </>
   );
 }

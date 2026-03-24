@@ -9,6 +9,21 @@ import { Label } from "@/components/ui/label";
 import { Loader2, Eye, EyeOff } from "lucide-react";
 import { signIn } from "@/lib/auth-client";
 
+function friendlyAuthError(message?: string): string {
+  const m = message?.toLowerCase() ?? "";
+  if (m.includes("invalid email or password") || m.includes("invalid password") || m.includes("user not found"))
+    return "Incorrect email or password. Please try again.";
+  if (m.includes("invalid email"))
+    return "That doesn't look like a valid email address.";
+  if (m.includes("email not verified"))
+    return "Please verify your email before signing in. Check your inbox for a verification link.";
+  if (m.includes("session expired"))
+    return "Your session expired. Please sign in again.";
+  if (m.includes("too many") || m.includes("rate"))
+    return "Too many attempts. Please wait a moment and try again.";
+  return "Something went wrong. Please try again.";
+}
+
 export default function LoginPage() {
   return (
     <Suspense>
@@ -40,7 +55,7 @@ function LoginForm() {
     );
 
     if (signInError) {
-      setError(signInError.message ?? "Login failed.");
+      setError(friendlyAuthError(signInError.message));
       setLoading(false);
     }
   }

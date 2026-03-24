@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2, Clock, DollarSign, MapPin, Camera } from "lucide-react";
+import { toast } from "sonner";
 
 const CATEGORIES = [
   "Cleaning",
@@ -44,7 +45,6 @@ export function EditProfileForm({ profile, currentAvailability, onCancel }: Prop
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState(false);
 
   const [avatarPreview, setAvatarPreview] = useState<string | null>(profile.avatarUrl ?? null);
   const [avatarData, setAvatarData] = useState<string | null>(null);
@@ -124,8 +124,8 @@ export function EditProfileForm({ profile, currentAvailability, onCancel }: Prop
       body: JSON.stringify({ slots }),
     });
 
-    setSuccess(true);
     setLoading(false);
+    toast.success("Profile updated successfully.");
     router.refresh();
     onCancel();
   }
@@ -287,12 +287,6 @@ export function EditProfileForm({ profile, currentAvailability, onCancel }: Prop
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-700">
           {error}
-        </div>
-      )}
-
-      {success && (
-        <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 text-sm text-emerald-700">
-          Profile updated successfully.
         </div>
       )}
 

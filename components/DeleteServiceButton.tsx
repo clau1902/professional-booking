@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Trash2, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 export function DeleteServiceButton({ serviceId }: { serviceId: string }) {
   const router = useRouter();
@@ -11,8 +12,13 @@ export function DeleteServiceButton({ serviceId }: { serviceId: string }) {
   async function handleDelete() {
     if (!confirm("Delete this service? Existing bookings won't be affected.")) return;
     setLoading(true);
-    await fetch(`/api/professional/services/${serviceId}`, { method: "DELETE" });
+    const res = await fetch(`/api/professional/services/${serviceId}`, { method: "DELETE" });
     setLoading(false);
+    if (res.ok) {
+      toast.success("Service deleted.");
+    } else {
+      toast.error("Failed to delete service. Please try again.");
+    }
     router.refresh();
   }
 

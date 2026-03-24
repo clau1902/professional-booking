@@ -9,7 +9,25 @@ import { Calendar } from "@/components/ui/calendar";
 import { CheckCircle, Loader2, RefreshCw } from "lucide-react";
 import { format, isBefore, startOfDay } from "date-fns";
 
-const TIME_SLOTS = [
+interface AvailabilitySlot {
+  dayOfWeek: number;
+  startTime: string; // "09:00"
+  endTime: string;   // "17:00"
+}
+
+function generateTimeSlots(startTime: string, endTime: string): string[] {
+  const [startH] = startTime.split(":").map(Number);
+  const [endH] = endTime.split(":").map(Number);
+  const slots: string[] = [];
+  for (let h = startH; h < endH; h++) {
+    const period = h < 12 ? "AM" : "PM";
+    const displayH = h === 0 ? 12 : h > 12 ? h - 12 : h;
+    slots.push(`${displayH}:00 ${period}`);
+  }
+  return slots;
+}
+
+const DEFAULT_SLOTS = [
   "9:00 AM", "10:00 AM", "11:00 AM", "12:00 PM",
   "1:00 PM", "2:00 PM", "3:00 PM", "4:00 PM", "5:00 PM",
 ];
@@ -30,11 +48,15 @@ interface Props {
   };
   services: Service[];
   selectedServiceId?: string;
+  availability?: AvailabilitySlot[];
 }
 
 type Step = "service" | "datetime" | "details" | "confirm" | "success";
 
-export function BookingForm({ professional, services, selectedServiceId }: Props) {
+export function BookingForm({ professional, services, selectedServiceId, availability = [] }: Props) {
+  // Build a map of dayOfWeek → slot for quick lookup
+  const availabilityByDay = new Map(availability.map((a) => [a.dayOfWeek, a]));
+  const hasAvailability = availability.length > 0;
   const router = useRouter();
   const [step, setStep] = useState<Step>(selectedServiceId ? "datetime" : "service");
   const [selectedService, setSelectedService] = useState<Service | undefined>(
@@ -212,33 +234,58 @@ export function BookingForm({ professional, services, selectedServiceId }: Props
                 <Calendar
                   mode="single"
                   selected={selectedDate}
-                  onSelect={setSelectedDate}
-                  disabled={(date) =>
-                    isBefore(date, startOfDay(new Date())) || date.getDay() === 0
-                  }
+                  onSelect={(date) => { setSelectedDate(date); setSelectedTime(""); }}
+                  disabled={(date) => {
+                    if (isBefore(date, startOfDay(new Date()))) return true;
+                    if (hasAvailability) return !availabilityByDay.has(date.getDay());
+                    return date.getDay() === 0; // fallback: disable Sundays only
+                  }}
                   className="rounded-2xl border border-[var(--border)] p-3"
                 />
+                {hasAvailability && (
+                  <p className="text-xs text-[var(--muted-foreground)] mt-2">
+                    Only days the professional is available are selectable.
+                  </p>
+                )}
               </div>
               <div>
                 <Label className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wider mb-3 block">
                   Select time
                 </Label>
-                <div className="grid grid-cols-2 gap-2">
-                  {TIME_SLOTS.map((time) => (
-                    <button
-                      key={time}
-                      onClick={() => setSelectedTime(time)}
-                      disabled={!selectedDate}
-                      className={`py-3 px-4 rounded-xl text-sm border transition-all ${
-                        selectedTime === time
-                          ? "bg-[var(--terra)] text-white border-[var(--terra)]"
-                          : "border-[var(--border)] hover:border-[var(--terra)] disabled:opacity-40 disabled:cursor-not-allowed"
-                      }`}
-                    >
-                      {time}
-                    </button>
-                  ))}
-                </div>
+                {selectedDate ? (() => {
+                  const daySlot = availabilityByDay.get(selectedDate.getDay());
+                  const slots = daySlot
+                    ? generateTimeSlots(daySlot.startTime, daySlot.endTime)
+                    : DEFAULT_SLOTS;
+                  return (
+                    <>
+                      {daySlot && (
+                        <p className="text-xs text-[var(--muted-foreground)] mb-3">
+                          Available {daySlot.startTime} – {daySlot.endTime}
+                        </p>
+                      )}
+                      <div className="grid grid-cols-2 gap-2">
+                        {slots.map((time) => (
+                          <button
+                            key={time}
+                            onClick={() => setSelectedTime(time)}
+                            className={`py-3 px-4 rounded-xl text-sm border transition-all ${
+                              selectedTime === time
+                                ? "bg-[var(--terra)] text-white border-[var(--terra)]"
+                                : "border-[var(--border)] hover:border-[var(--terra)]"
+                            }`}
+                          >
+                            {time}
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  );
+                })() : (
+                  <div className="flex items-center justify-center h-32 text-sm text-[var(--muted-foreground)] border border-dashed border-[var(--border)] rounded-2xl">
+                    Select a date first
+                  </div>
+                )}
               </div>
             </div>
             <div className="flex gap-3 mt-6">
