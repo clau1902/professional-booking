@@ -8,8 +8,9 @@ const globalForDb = globalThis as unknown as {
 
 const connection =
   globalForDb.connection ??
-  postgres((process.env.POSTGRES_URL ?? process.env.DATABASE_URL)!, { max: 10 });
+  postgres(process.env.DATABASE_URL!, { max: 1 });
 
-globalForDb.connection = connection;
+if (process.env.NODE_ENV !== "production") globalForDb.connection = connection;
 
 export const db = drizzle(connection, { schema });
+
